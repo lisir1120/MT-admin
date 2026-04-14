@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>明瞳管理后台</title>
+    <style>
+        :root {
+            --bg: #f5f7fa;
+            --sidebar-bg: #ffffff;
+            --card-bg: #ffffff;
+            --text: #374151;
+            --text-light: #9ca3af;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --danger: #ef4444;
+            --success: #10b981;
+            --border: #e5e7eb;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --radius: 12px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        
+        /* 登录界面 */
+        .login-wrapper { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .login-box { background: #fff; padding: 48px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; width: 360px; }
+        .login-box h2 { font-size: 24px; margin-bottom: 8px; color: var(--text); }
+        .login-box p { color: var(--text-light); margin-bottom: 32px; font-size: 14px; }
+        .login-box input { width: 100%; padding: 14px 16px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; margin-bottom: 16px; transition: border-color 0.3s; }
+        .login-box input:focus { outline: none; border-color: var(--primary); }
+        .login-box button { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; transition: background 0.3s; }
+        .login-box button:hover { background: var(--primary-hover); }
+        
+        /* 主布局 */
+        .app-layout { display: none; min-height: 100vh; }
+        .app-layout.active { display: flex; }
+        
+        /* 左侧导航 */
+        .sidebar { width: 240px; background: var(--sidebar-bg); border-right: 1px solid var(--border); padding: 24px 0; position: fixed; height: 100vh; overflow-y: auto; }
+        .sidebar-logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+        .sidebar-logo h1 { font-size: 20px; font-weight: 700; color: var(--primary); }
+        .menu-item { padding: 14px 24px; cursor: pointer; color: var(--text-light); transition: all 0.2s; border-left: 3px solid transparent; }
+        .menu-item:hover { background: #f9fafb; color: var(--text); }
+        .menu-item.active { background: #eff6ff; color: var(--primary); border-left-color: var(--primary); font-weight: 600; }
+        .menu-item.logout { margin-top: 40px; color: var(--danger); }
+        .menu-item.logout:hover { background: #fef2f2; }
+        
+        /* 主内容区 */
+        .main-content { flex: 1; margin-left: 240px; padding: 32px; }
+        
+        /* 页面区块 */
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+        
+        /* 卡片 */
+        .card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 24px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-title { font-size: 18px; font-weight: 600; }
+        
+        /* 统计卡片 */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; text-align: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .stat-card .number { font-size: 36px; font-weight: 700; color: var(--primary); }
+        .stat-card .label { font-size: 14px; color: var(--text-light); margin-top: 8px; }
+        
+        /* 表单 */
+        .form-group { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+        .form-group input, .form-group select { padding: 12px 16px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; background: #f9fafb; }
+        .form-group input { min-width: 160px; }
+        .form-group select { min-width: 140px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+        .btn { padding: 12px 24px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+        .btn:hover { background: var(--primary-hover); }
+        
+        /* 用户列表 */
+        .user-list { display: flex; flex-direction: column; gap: 12px; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #f9fafb; border-radius: 10px; transition: background 0.2s; }
+        .user-item:hover { background: #f0f4f8; }
+        .user-info { display: flex; flex-direction: column; gap: 4px; }
+        .user-name { font-weight: 600; font-size: 15px; }
+        .user-meta { font-size: 13px; color: var(--text-light); }
+        .user-status { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .user-status.active { background: #d1fae5; color: #059669; }
+        .user-status.expired { background: #fee2e2; color: #dc2626; }
+        .user-actions { display: flex; gap: 8px; }
+        .btn-sm { padding: 8px 14px; border-radius: 8px; font-size: 13px; border: none; cursor: pointer; }
+        .btn-renew { background: #e0f2fe; color: var(--primary); }
+        .btn-delete { background: #fee2e2; color: var(--danger); }
+        
+        /* 月份选择 */
+        .month-select { padding: 12px 16px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; margin-bottom: 16px; width: 200px; }
+        .month-stats { text-align: center; padding: 32px; }
+        .month-stats .num { font-size: 48px; font-weight: 700; color: var(--primary); }
+        .month-stats .desc { color: var(--text-light); margin-top: 8px; }
+        
+        /* 搜索框 */
+        .search-input { padding: 10px 16px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; width: 200px; }
+        .search-input:focus { outline: none; border-color: var(--primary); }
+        .empty-state { text-align: center; padding: 48px; color: var(--text-light); }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); }
+            .main-content { margin-left: 0; padding: 20px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .form-group { flex-direction: column; align-items: stretch; }
+            .form-group input, .form-group select { width: 100%; }
+            .user-item { flex-direction: column; gap: 12px; align-items: flex-start; }
+            .user-actions { width: 100%; }
+            .btn-sm { flex: 1; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录页 -->
+    <div class="login-wrapper" id="loginScreen">
+        <div class="login-box">
+            <h2>明瞳管理后台</h2>
+            <p>请输入管理密码登录</p>
+            <input type="password" id="adminPwd" placeholder="管理密码" onkeypress="if(event.key==='Enter')doLogin()">
+            <button onclick="doLogin()">登 录</button>
+            <p style="margin-top:16px;font-size:12px;color:#999;" id="connectionStatus">正在检查连接...</p>
+        </div>
+        <script>
+            fetch('https://1421862725-8wonuuad6l.ap-guangzhou.tencentscf.com/users?admin_key=admin123')
+                .then(r => r.json())
+                .then(d => { document.getElementById('connectionStatus').textContent = '✓ 服务器连接正常'; })
+                .catch(e => { document.getElementById('connectionStatus').textContent = '✗ 请用HTTP服务器打开此页面'; });
+        </script>
+    </div>
+    
+    <!-- 主界面 -->
+    <div class="app-layout" id="mainScreen">
+        <!-- 左侧导航 -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <h1>明瞳管理</h1>
+            </div>
+            <div class="menu-item active" onclick="showSection('total')">总用户</div>
+            <div class="menu-item" onclick="showSection('active')">有效用户</div>
+            <div class="menu-item" onclick="showSection('expired')">已过期用户</div>
+            <div class="menu-item" onclick="showSection('add')">添加用户</div>
+            <div class="menu-item" onclick="showSection('month')">每月统计</div>
+            <div class="menu-item logout" onclick="logout()">退出登录</div>
+        </aside>
+        
+        <!-- 主内容 -->
+        <main class="main-content">
+            <!-- 总用户 -->
+            <div class="page-section active" id="section-total">
+                <div class="stats-grid">
+                    <div class="stat-card" onclick="showSection('total')">
+                        <div class="number" id="totalNum">0</div>
+                        <div class="label">总用户</div>
+                    </div>
+                    <div class="stat-card" onclick="showSection('active')">
+                        <div class="number" id="activeNum">0</div>
+                        <div class="label">有效用户</div>
+                    </div>
+                    <div class="stat-card" onclick="showSection('expired')">
+                        <div class="number" id="expiredNum">0</div>
+                        <div class="label">已过期</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">用户列表</span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="搜索用户名..." oninput="searchUsers()">
+                    </div>
+                    <div class="user-list" id="totalList"></div>
+                </div>
+            </div>
+            
+            <!-- 有效用户 -->
+            <div class="page-section" id="section-active">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">有效用户</span>
+                        <input type="text" id="searchActiveInput" class="search-input" placeholder="搜索用户..." oninput="renderActiveList()">
+                    </div>
+                    <div class="user-list" id="activeList"></div>
+                </div>
+            </div>
+            
+            <!-- 已过期 -->
+            <div class="page-section" id="section-expired">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">已过期用户</span>
+                        <input type="text" id="searchExpiredInput" class="search-input" placeholder="搜索用户..." oninput="renderExpiredList()">
+                    </div>
+                    <div class="user-list" id="expiredList"></div>
+                </div>
+            </div>
+            
+            <!-- 添加用户 -->
+            <div class="page-section" id="section-add">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">添加新用户</span>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="newUsername" placeholder="用户名">
+                        <input type="text" id="newPassword" placeholder="密码">
+                        <select id="newExpiry">
+                            <option value="1">测试1分钟</option>
+                            <option value="30">30天</option>
+                            <option value="90">90天</option>
+                            <option value="365">365天</option>
+                            <option value="permanent">永久</option>
+                        </select>
+                        <button class="btn" onclick="addUser()">添加用户</button>
+                    </div>
+                    <p style="color: var(--text-light); margin-top: 16px;">当前用户总数: <strong id="userCount">0</strong></p>
+                </div>
+            </div>
+            
+            <!-- 每月统计 -->
+            <div class="page-section" id="section-month">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">每月用户统计</span>
+                    </div>
+                    <select class="month-select" id="monthSelect" onchange="showMonthStats()">
+                        <option value="">请选择月份</option>
+                    </select>
+                    <div class="month-stats" id="monthStats"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        var users = [];
+        var ADMIN_KEY = 'admin123';
+        var API_URL = 'https://1421862725-cyatlom5hb.ap-guangzhou.tencentscf.com';
+        
+        if (localStorage.getItem('admin_logged') === 'true') {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainScreen').classList.add('active');
+            fetchUsers();
+        }
+        
+        function fetchUsers() {
+            fetch(API_URL + '/users?admin_key=' + ADMIN_KEY)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        users = data.users || [];
+                        updateStats();
+                        renderTotalList();
+                    }
+                })
+                .catch(e => console.log('fetch error', e));
+        }
+        
+        function doLogin() {
+            var pwd = document.getElementById('adminPwd').value;
+            if (pwd === ADMIN_KEY) {
+                localStorage.setItem('admin_logged', 'true');
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainScreen').classList.add('active');
+                fetchUsers();
+            } else {
+                alert('密码错误');
+            }
+        }
+        
+        function showSection(name) {
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('section-' + name).classList.add('active');
+            if (name === 'total') renderTotalList();
+            if (name === 'active') renderActiveList();
+            if (name === 'expired') renderExpiredList();
+            if (name === 'month') updateMonthSelect();
+        }
+        
+        function getExpiryDate(expiry) {
+            if (expiry === '永久') return null;
+            try { return new Date(expiry); } catch(e) { return null; }
+        }
+        
+        function isExpired(expiry) {
+            var expDate = getExpiryDate(expiry);
+            if (!expDate) return false;
+            return expDate < new Date();
+        }
+        
+        function updateStats() {
+            var total = users.length;
+            var expired = users.filter(u => isExpired(u.expiry)).length;
+            var active = total - expired;
+            document.getElementById('totalNum').textContent = total;
+            document.getElementById('activeNum').textContent = active;
+            document.getElementById('expiredNum').textContent = expired;
+            document.getElementById('userCount').textContent = total;
+        }
+        
+        function renderTotalList() {
+            var list = document.getElementById('totalList');
+            var keyword = document.getElementById('searchInput').value.toLowerCase();
+            var filtered = users.filter(function(u) {
+                return u.username.toLowerCase().includes(keyword) || u.password.toLowerCase().includes(keyword);
+            });
+            if (filtered.length === 0) { list.innerHTML = '<div class="empty-state">暂无用户</div>'; return; }
+            list.innerHTML = filtered.map(function(u, i) {
+                var expired = isExpired(u.expiry);
+                var statusClass = expired ? 'expired' : 'active';
+                var statusText = expired ? '已过期' : '有效';
+                var idx = users.indexOf(u);
+                return '<div class="user-item"><div class="user-info"><span class="user-name">' + u.username + '</span><span class="user-meta">' + u.password + ' · ' + u.expiry + '</span></div><div style="display:flex;align-items:center;gap:12px;"><span class="user-status ' + statusClass + '">' + statusText + '</span><div class="user-actions"><button class="btn-sm btn-renew" onclick="renewUser(' + idx + ')">续期</button><button class="btn-sm btn-delete" onclick="deleteUser(' + idx + ')">删除</button></div></div></div>';
+            }).join('');
+        }
+        
+        function searchUsers() {
+            renderTotalList();
+        }
+        
+        function renderActiveList() {
+            var list = document.getElementById('activeList');
+            var keyword = document.getElementById('searchActiveInput').value.toLowerCase();
+            var active = users.filter(function(u) { 
+                return !isExpired(u.expiry) && (u.username.toLowerCase().includes(keyword) || u.password.toLowerCase().includes(keyword));
+            });
+            if (active.length === 0) { list.innerHTML = '<div class="empty-state">暂无有效用户</div>'; return; }
+            list.innerHTML = active.map(function(u, i) {
+                var idx = users.indexOf(u);
+                return '<div class="user-item"><div class="user-info"><span class="user-name">' + u.username + '</span><span class="user-meta">' + u.password + ' · ' + u.expiry + '</span></div><div class="user-actions"><button class="btn-sm btn-delete" onclick="deleteUser(' + idx + ')">删除</button></div></div>';
+            }).join('');
+        }
+        
+        function renderExpiredList() {
+            var list = document.getElementById('expiredList');
+            var keyword = document.getElementById('searchExpiredInput').value.toLowerCase();
+            var expired = users.filter(function(u) { 
+                return isExpired(u.expiry) && (u.username.toLowerCase().includes(keyword) || u.password.toLowerCase().includes(keyword));
+            });
+            if (expired.length === 0) { list.innerHTML = '<div class="empty-state">暂无已过期用户</div>'; return; }
+            list.innerHTML = expired.map(function(u, i) {
+                var idx = users.indexOf(u);
+                return '<div class="user-item"><div class="user-info"><span class="user-name">' + u.username + '</span><span class="user-meta">' + u.password + ' · ' + u.expiry + '</span></div><div class="user-actions"><button class="btn-sm btn-renew" onclick="renewUser(' + idx + ')">续期</button><button class="btn-sm btn-delete" onclick="deleteUser(' + idx + ')">删除</button></div></div>';
+            }).join('');
+        }
+        
+        function addUser() {
+            var username = document.getElementById('newUsername').value;
+            var password = document.getElementById('newPassword').value;
+            var expiryOption = document.getElementById('newExpiry').value;
+            
+            if (!username || !password) { alert('请填写用户名和密码'); return; }
+            
+            var expiry;
+            if (expiryOption === 'permanent') expiry = '永久';
+            else if (expiryOption === '1') { var d = new Date(); d.setMinutes(d.getMinutes() + 1); expiry = d.toISOString().replace('T', ' ').substring(0, 16); }
+            else { var d = new Date(); d.setDate(d.getDate() + parseInt(expiryOption)); expiry = d.toISOString().split('T')[0]; }
+            
+            fetch(API_URL + '/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username, password: password, expiry: expiry})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('newUsername').value = '';
+                    document.getElementById('newPassword').value = '';
+                    fetchUsers();
+                    alert('添加成功');
+                } else {
+                    alert(data.error || '添加失败');
+                }
+            })
+            .catch(() => alert('网络错误'));
+        }
+        
+        function deleteUser(index) {
+            if (!confirm('确定删除该用户?')) return;
+            var user = users[index];
+            
+            fetch(API_URL + '/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: user.username, admin_key: ADMIN_KEY})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    fetchUsers();
+                } else {
+                    alert(data.error || '删除失败');
+                }
+            })
+            .catch(() => alert('网络错误'));
+        }
+        
+        function renewUser(index) {
+            var user = users[index];
+            var opt = prompt('续期: 1=30天 2=90天 3=365天 4=永久');
+            if (!opt) return;
+            var expiry;
+            var d = new Date();
+            if (opt === '1') { d.setDate(d.getDate() + 30); expiry = d.toISOString().split('T')[0]; }
+            else if (opt === '2') { d.setDate(d.getDate() + 90); expiry = d.toISOString().split('T')[0]; }
+            else if (opt === '3') { d.setDate(d.getDate() + 365); expiry = d.toISOString().split('T')[0]; }
+            else if (opt === '4') { expiry = '永久'; }
+            else { alert('无效选项'); return; }
+            
+            fetch(API_URL + '/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: user.username, expiry: expiry, admin_key: ADMIN_KEY})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    fetchUsers();
+                    alert('续期成功');
+                } else {
+                    alert(data.error || '续期失败');
+                }
+            })
+            .catch(() => alert('网络错误'));
+        }
+        
+        function updateMonthSelect() {
+            var sel = document.getElementById('monthSelect');
+            var now = new Date();
+            var opt = '<option value="">请选择月份</option>';
+            for (var i = 0; i < 12; i++) {
+                var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                var v = d.getFullYear() + '-' + (d.getMonth() + 1);
+                var t = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+                opt += '<option value="' + v + '">' + t + '</option>';
+            }
+            sel.innerHTML = opt;
+        }
+        
+        function showMonthStats() {
+            var month = document.getElementById('monthSelect').value;
+            var div = document.getElementById('monthStats');
+            if (!month) { div.innerHTML = ''; return; }
+            var count = 0;
+            var thisMonth = new Date(month + '-01');
+            var nextMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth() + 1, 1);
+            users.forEach(function(u) {
+                if (u.created) { var c = new Date(u.created); if (c >= thisMonth && c < nextMonth) count++; }
+            });
+            div.innerHTML = '<div class="num">' + count + '</div><div class="desc">本月新增用户</div>';
+        }
+        
+        function logout() {
+            if (confirm('确定退出登录?')) {
+                localStorage.removeItem('admin_logged');
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
